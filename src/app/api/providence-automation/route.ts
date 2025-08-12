@@ -343,7 +343,11 @@ export async function POST(request: NextRequest) {
             steps: errorSteps,
             error: error instanceof Error ? error.message : 'Unknown error occurred'
           })}\n\n`));
-        } finally {
+        } 
+        if(automation){
+          await automation.close();
+        }
+        finally {
           controller.close();
         }
       })();
