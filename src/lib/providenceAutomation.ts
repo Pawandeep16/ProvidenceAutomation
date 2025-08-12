@@ -482,4 +482,15 @@ export class ProvidenceAutomation {
     
     return data;
   }
+
+   async close(): Promise<void> {
+    if (this.driver) {
+      try {
+        await this.driver.quit(); // cleanly close browser and driver session
+      } catch (err) {
+        console.error('Error while closing driver:', err);
+      }
+      this.driver = null;
+    }
+  }
 }

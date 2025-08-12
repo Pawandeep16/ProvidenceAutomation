@@ -1,3 +1,4 @@
 {
+  "/api/providence-automation/route": "app/api/providence-automation/route.js",
   "/page": "app/page.js"
 }
