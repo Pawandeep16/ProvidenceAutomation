@@ -318,7 +318,7 @@ export async function POST(request: NextRequest) {
           })}\n\n`));
           
           // Close automation on error
-         
+        
         } finally {
           controller.close();
         }

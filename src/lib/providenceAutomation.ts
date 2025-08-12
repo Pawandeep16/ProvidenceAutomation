@@ -1,16 +1,12 @@
-import { Builder, By, WebDriver, until, Key ,WebElement} from 'selenium-webdriver';
+import { Builder, By, WebDriver, until, Key, WebElement } from 'selenium-webdriver';
 import path from 'path';
 import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
 
 export class ProvidenceAutomation {
-
   private driver: WebDriver | null = null;
 
-
   async initialize(): Promise<void> {
-    
-
-     const options = new chrome.Options();
+    const options = new chrome.Options();
     // Chrome options to suppress errors and optimize performance
     options.addArguments('--no-sandbox');
     options.addArguments('--disable-dev-shm-usage');
@@ -54,19 +50,8 @@ export class ProvidenceAutomation {
     options.addArguments('--silent');
     options.addArguments('--disable-logging');
     
-   
-    // Set timeouts
-   
-        
     const chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
     const serviceBuilder = new ServiceBuilder(chromedriverPath);
-
-        // options.addArguments('--headless');
-    options.addArguments('--no-sandbox');
-    options.addArguments('--disable-dev-shm-usage');
-    options.addArguments('--disable-gpu');
-    options.addArguments('--window-size=1920,1080');
-    options.addArguments('--start-maximized');
 
     this.driver = await new Builder()
       .forBrowser('chrome')
@@ -82,7 +67,6 @@ export class ProvidenceAutomation {
   }
 
   async navigateToLogin(): Promise<void> {
-    
     if (!this.driver) throw new Error('Driver not initialized');
 
     console.log('Navigating to Providence login page...');
@@ -108,7 +92,6 @@ export class ProvidenceAutomation {
     const submitButton = await this.driver.findElement(By.css('button[type="submit"]'));
     await submitButton.click();
 
-    
     console.log('Login successful, redirected to dashboard');
   }
 
@@ -117,15 +100,12 @@ export class ProvidenceAutomation {
     
     console.log('Looking for facility selection modal dialog...');
     
-    // Wait for the modal to appear after login
     await this.driver.sleep(1000);
     
     try {
-      // Wait for the modal dialog to appear
       console.log('Waiting for facility selection modal...');
       await this.driver.wait(until.elementLocated(By.css('.ant-modal-root, .ant-modal')), 15000);
       
-      // Look for the "Select Facility" modal specifically
       const modalSelectors = [
         '.ant-modal-content',
         '.ant-modal-body',
@@ -143,11 +123,8 @@ export class ProvidenceAutomation {
         }
       }
       
-      if (!modalElement) {
-        throw new Error('Facility selection modal not found');
-      }
+      if (!modalElement) throw new Error('Facility selection modal not found');
       
-      // Look for the dropdown within the modal
       const dropdownSelectors = [
         '.ant-select',
         '.ant-select-selector',
@@ -166,11 +143,8 @@ export class ProvidenceAutomation {
         }
       }
       
-      if (!dropdownElement) {
-        throw new Error('Facility dropdown not found in modal');
-      }
+      if (!dropdownElement) throw new Error('Facility dropdown not found in modal');
       
-      // Scroll dropdown into view and click it
       await this.driver.executeScript("arguments[0].scrollIntoView(true);", dropdownElement);
       await this.driver.sleep(1000);
       
@@ -178,10 +152,8 @@ export class ProvidenceAutomation {
       await dropdownElement.click();
       await this.driver.sleep(1000);
       
-      // Wait for dropdown options to appear
       await this.driver.wait(until.elementLocated(By.css('.ant-select-dropdown, .rc-virtual-list')), 10000);
       
-      // Look for YYZ5 option in the dropdown
       const yyz5Selectors = [
         "//div[@title='YYZ5']",
         "//div[contains(@class, 'ant-select-item') and contains(text(), 'YYZ5')]",
@@ -203,7 +175,6 @@ export class ProvidenceAutomation {
       }
       
       if (!yyz5Element) {
-        // Try a more generic approach - look for any option containing YYZ5
         try {
           yyz5Element = await this.driver.findElement(By.xpath("//*[contains(text(), 'YYZ5')]"));
           console.log('Found YYZ5 option with generic selector');
@@ -212,13 +183,11 @@ export class ProvidenceAutomation {
         }
       }
       
-      // Click the YYZ5 option
       await this.driver.executeScript("arguments[0].scrollIntoView(true);", yyz5Element);
       await this.driver.sleep(500);
       await yyz5Element.click();
       console.log('Selected YYZ5 facility');
       await this.driver.sleep(1000);
-      
       
     } catch (error) {
       console.error('Error in facility selection:', error);
@@ -231,10 +200,8 @@ export class ProvidenceAutomation {
     
     console.log('Looking for Inventory Management tab...');
     
-    // Wait for the main navigation to load
     await this.driver.sleep(3000);
     
-    // Look for Inventory Management tab using various selectors
     const inventorySelectors = [
       '[role="tab"][aria-controls*="Inventory"]',
       '[data-node-key="Inventory Management"]',
@@ -259,18 +226,14 @@ export class ProvidenceAutomation {
       }
     }
     
-    if (!inventoryTab) {
-      throw new Error('Inventory Management tab not found');
-    }
+    if (!inventoryTab) throw new Error('Inventory Management tab not found');
     
-    // Scroll into view and click
     await this.driver.executeScript("arguments[0].scrollIntoView(true);", inventoryTab);
     await this.driver.sleep(1000);
     
     console.log('Clicking Inventory Management tab...');
     await inventoryTab.click();
     
-    // Wait for the tab content to load
     await this.driver.sleep(3000);
     console.log('Inventory Management tab opened successfully');
   }
@@ -280,7 +243,6 @@ export class ProvidenceAutomation {
     
     console.log('Looking for Manual Items section...');
     
-    // Look for Manual Items card/button using various selectors
     const manualItemsSelectors = [
       '//div[contains(@class, "sc-eldPxv") and contains(text(), "MANUAL ITEMS")]',
       '//div[contains(text(), "MANUAL ITEMS")]',
@@ -305,21 +267,16 @@ export class ProvidenceAutomation {
       }
     }
     
-    if (!manualItemsElement) {
-      throw new Error('Manual Items section not found');
-    }
+    if (!manualItemsElement) throw new Error('Manual Items section not found');
     
-    // Scroll into view and click
     await this.driver.executeScript("arguments[0].scrollIntoView(true);", manualItemsElement);
     await this.driver.sleep(1000);
     
     console.log('Clicking Manual Items...');
     await manualItemsElement.click();
     
-    // Wait for Manual Items page to load
     await this.driver.sleep(3000);
     
-    // Verify we're on the Manual Items page by looking for the search input
     try {
       await this.driver.wait(until.elementLocated(By.css('input[placeholder*="Search"], input[placeholder*="search"]')), 10000);
       console.log('Manual Items page loaded successfully');
@@ -327,10 +284,6 @@ export class ProvidenceAutomation {
       console.log('Manual Items page may have loaded, continuing...');
     }
   }
-
-
-  //  updation 
-
 
   async searchOrder(orderNumber: string): Promise<any> {
     if (!this.driver) throw new Error('Driver not initialized');
@@ -426,42 +379,61 @@ export class ProvidenceAutomation {
     const data: any = { locations: [] };
     
     try {
-      await this.driver.wait(until.elementLocated(By.css('.ant-table-tbody tr.ant-table-row')), 8000);
-      const rows = await this.driver.findElements(By.css('.ant-table-tbody tr.ant-table-row'));
-      console.log(`Found ${rows.length} rows in search results`);
+      // Increase wait time and retry to ensure all rows are loaded
+      await this.driver.wait(until.elementLocated(By.css('.ant-table-tbody tr.ant-table-row')), 10000); // Increased to 10s
+      let rows = await this.driver.findElements(By.css('.ant-table-tbody tr.ant-table-row'));
+      console.log(`Initial rows found: ${rows.length}`);
+      
+      // Retry if no rows are found
+      if (rows.length === 0) {
+        console.log('No rows found initially, retrying...');
+        await this.driver.sleep(2000);
+        rows = await this.driver.findElements(By.css('.ant-table-tbody tr.ant-table-row'));
+        console.log(`Retry rows found: ${rows.length}`);
+      }
       
       if (rows.length > 0) {
         let firstMatch = true;
         for (const row of rows) {
-          const cells = await row.findElements(By.css('td'));
-          if (cells.length >= 5) {
-            const currentOrder = (await cells[4].getText()).trim(); // Order number in column E (index 4)
-            console.log(`Checking row with order: ${currentOrder}`);
+          try {
+            const cells = await row.findElements(By.css('td'));
+            console.log(`Row has ${cells.length} cells`);
             
-            if (currentOrder === orderNumber) {
-              const locationCell = cells[1]; // Location in column B (index 1)
-              let location = '';
-              try {
-                const locationLink = await locationCell.findElement(By.css('a[href*="/locations/"]'));
-                location = (await locationLink.getText()).trim();
-                console.log(`✅ Found location link: ${location}`);
-              } catch (linkError) {
-                location = (await locationCell.getText()).trim();
-                console.log(`✅ Found location text: ${location}`);
-              }
+            if (cells.length >= 5) {
+              const currentOrder = (await cells[4].getText()).trim(); // Order number in column E (index 4)
+              console.log(`Checking row with order: ${currentOrder}`);
               
-              if (location) {
-                data.locations.push(location);
+              if (currentOrder === orderNumber) {
+                const locationCell = cells[1]; // Location in column B (index 1)
+                let location = '';
+                try {
+                  const locationLink = await locationCell.findElement(By.css('a[href*="/locations/"]'));
+                  location = (await locationLink.getText()).trim();
+                  console.log(`✅ Found location link: ${location}`);
+                } catch (linkError) {
+                  location = (await locationCell.getText()).trim();
+                  console.log(`✅ Found location text: ${location}`);
+                }
+                
+                if (location) {
+                  data.locations.push(location);
+                  console.log(`Added location: ${location}, Total locations: ${data.locations.length}`);
+                }
+                
+                if (firstMatch) {
+                  data.code = (await cells[0].getText()).trim(); // Code in column A (index 0)
+                  data.organization = (await cells[2].getText()).trim(); // Organization in column C (index 2)
+                  data.customer = (await cells[3].getText()).trim(); // Customer in column D (index 3)
+                  data.order = currentOrder;
+                  firstMatch = false;
+                }
               }
-              
-              if (firstMatch) {
-                data.code = (await cells[0].getText()).trim(); // Code in column A (index 0)
-                data.organization = (await cells[2].getText()).trim(); // Organization in column C (index 2)
-                data.customer = (await cells[3].getText()).trim(); // Customer in column D (index 3)
-                data.order = currentOrder;
-                firstMatch = false;
-              }
+            } else {
+              console.log(`❌ Row has insufficient cells (${cells.length}), skipping...`);
             }
+          } catch (cellError) {
+            console.error(`❌ Error processing row cells: ${cellError}`);
+            continue; // Skip to next row if cell extraction fails
           }
         }
         
@@ -481,16 +453,5 @@ export class ProvidenceAutomation {
     }
     
     return data;
-  }
-
-   async close(): Promise<void> {
-    if (this.driver) {
-      try {
-        await this.driver.quit(); // cleanly close browser and driver session
-      } catch (err) {
-        console.error('Error while closing driver:', err);
-      }
-      this.driver = null;
-    }
   }
 }

@@ -7,19 +7,19 @@ interface OrderRow {
 
 export class GoogleSheetsService {
   public sheets: any;
-  
- constructor() {
+
+  constructor() {
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
         private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'], // Changed to allow read and write
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
 
     this.sheets = google.sheets({ version: 'v4', auth });
   }
-  
+
   extractSpreadsheetId(url: string): string {
     const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
     if (!match) {
@@ -27,115 +27,106 @@ export class GoogleSheetsService {
     }
     return match[1];
   }
-  
+
   parseDateString(dateStr: string): Date | null {
-    // Handle formats like "08/09", "8/9", "12/25", etc.
     const currentYear = new Date().getFullYear();
-    
-    // Try MM/DD or M/D format
+
     const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
     if (match) {
       const month = parseInt(match[1], 10);
       const day = parseInt(match[2], 10);
-      
+
       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
         return new Date(currentYear, month - 1, day);
       }
     }
-    
+
     return null;
   }
-  
+
   async getLatestDateSheet(spreadsheetId: string): Promise<string> {
     try {
       const response = await this.sheets.spreadsheets.get({
         spreadsheetId,
         fields: 'sheets.properties.title',
       });
-      
+
       const sheets = response.data.sheets;
       if (!sheets || sheets.length === 0) {
         throw new Error('No sheets found in the spreadsheet');
       }
-      
+
       let latestSheet = '';
       let latestDate: Date | null = null;
-      
+
       for (const sheet of sheets) {
         const title = sheet.properties?.title;
         if (!title) continue;
-        
+
         const parsedDate = this.parseDateString(title);
         if (parsedDate && (!latestDate || parsedDate > latestDate)) {
           latestDate = parsedDate;
           latestSheet = title;
         }
       }
-      
+
       if (!latestSheet) {
-        // If no date sheets found, use the first sheet
         latestSheet = sheets[0].properties?.title || 'Sheet1';
       }
-      
+
       return latestSheet;
     } catch (error) {
       console.error('Error getting sheet names:', error);
       throw new Error('Failed to access Google Sheet. Please check permissions and URL.');
     }
   }
-  
+
   async getOrderNumbers(spreadsheetId: string, sheetName: string): Promise<OrderRow[]> {
     try {
-      // Get all data from the sheet
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${sheetName}!A:Z`, // Get all columns
+        range: `${sheetName}!A:Z`,
       });
-      
-      const rows = response.data.values;
+
+      const rows = response.data.values || [];
       if (!rows || rows.length === 0) {
         return [];
       }
-      
-      // Find the column that contains order numbers
-      // Look for common headers like "Order", "Order Number", "Order ID", etc.
+
       const headerRow = rows[0];
       const orderColumnIndex = this.findOrderColumn(headerRow);
-      
+
       if (orderColumnIndex === -1) {
         throw new Error('Could not find order number column. Expected headers like "Order", "Order Number", or "Order ID"');
       }
-      
+
       const orders: OrderRow[] = [];
-      
-      // Process data rows (skip header)
+
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const orderNumber = row[orderColumnIndex]?.toString().trim();
-        
+
         if (orderNumber) {
-          // Create order object with all row data
           const orderData: OrderRow = { orderNumber };
-          
-          // Add other column data using headers as keys
+
           for (let j = 0; j < headerRow.length; j++) {
             if (j !== orderColumnIndex && row[j]) {
               const header = headerRow[j]?.toString().toLowerCase().replace(/\s+/g, '_');
               orderData[header] = row[j];
             }
           }
-          
+
           orders.push(orderData);
         }
       }
-      
+
       return orders;
     } catch (error) {
       console.error('Error reading sheet data:', error);
       throw new Error('Failed to read order data from the sheet');
     }
   }
-  
+
   private findOrderColumn(headers: any[]): number {
     const orderHeaders = [
       'order',
@@ -146,16 +137,17 @@ export class GoogleSheetsService {
       'order_id',
       'orderid',
     ];
-    
+
     for (let i = 0; i < headers.length; i++) {
       const header = headers[i]?.toString().toLowerCase().trim();
       if (orderHeaders.includes(header)) {
         return i;
       }
     }
-    
+
     return -1;
   }
+
   async processSheet(googleSheetUrl: string): Promise<OrderRow[]> {
     const spreadsheetId = this.extractSpreadsheetId(googleSheetUrl);
 
@@ -163,7 +155,6 @@ export class GoogleSheetsService {
     console.log('Sheet URL:', googleSheetUrl);
     console.log('Spreadsheet ID:', spreadsheetId);
 
-    // Get the first sheet
     const response = await this.sheets.spreadsheets.get({
       spreadsheetId,
       fields: 'sheets.properties.title',
@@ -177,10 +168,9 @@ export class GoogleSheetsService {
     const sheetName = sheets[0].properties?.title || 'Sheet1';
     console.log('Using sheet:', sheetName);
 
-    // Get all data from the sheet
     const dataResponse = await this.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:M`, // A to M covers all columns shown in the image
+      range: `${sheetName}!A:M`,
     });
 
     const rows = dataResponse.data.values;
@@ -190,11 +180,9 @@ export class GoogleSheetsService {
 
     console.log(`Found ${rows.length} total rows (including header)`);
 
-    // Process the data - header is in row 0
     const headerRow = rows[0];
     console.log('Headers:', headerRow);
 
-    // Process orders based on the sheet structure from the image
     const orders: OrderRow[] = [];
 
     for (let i = 1; i < rows.length; i++) {
@@ -222,7 +210,6 @@ export class GoogleSheetsService {
 
     console.log(`Found ${orders.length} orders in sheet "${sheetName}"`);
 
-    // Filter and log BoltYYZ3 orders
     const boltOrders = orders.filter(order => 
       order.orderNumber && order.orderNumber.toString().startsWith('BoltYYZ3')
     );
@@ -234,7 +221,6 @@ export class GoogleSheetsService {
 
     return orders;
   }
-
 
   async updateLocationInSheet(googleSheetUrl: string, orderNumber: string, locations: string[]): Promise<void> {
     const spreadsheetId = this.extractSpreadsheetId(googleSheetUrl);
@@ -322,13 +308,14 @@ export class GoogleSheetsService {
 
         for (let i = 1; i < locations.length; i++) {
           // Insert a new row below the current target (shifts down each time)
+          const newRowIndex = targetRowIndex + i - 1;
           requests.push({
             insertDimension: {
               range: {
                 sheetId: sheets[0].properties.sheetId,
                 dimension: 'ROWS',
-                startIndex: targetRowIndex + i - 1,
-                endIndex: targetRowIndex + i
+                startIndex: newRowIndex,
+                endIndex: newRowIndex + 1
               },
               inheritFromBefore: true // Inherit formatting from above
             }
@@ -345,23 +332,45 @@ export class GoogleSheetsService {
             updateCells: {
               range: {
                 sheetId: sheets[0].properties.sheetId,
-                startRowIndex: targetRowIndex + i - 1,
-                endRowIndex: targetRowIndex + i,
+                startRowIndex: newRowIndex,
+                endRowIndex: newRowIndex + 1,
                 startColumnIndex: 0,
                 endColumnIndex: originalRowData.length
               },
-              rows: [{ values: newRowData.map(v => ({ userEnteredValue: { stringValue: v } })) }],
+              rows: [{ values: newRowData.map(v => ({ userEnteredValue: { stringValue: v || '' } })) }],
               fields: 'userEnteredValue'
             }
           });
+          console.log(`Prepared request for row ${newRowIndex + 1} with location: ${locations[i]}`);
         }
 
-        await this.sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: { requests }
-        });
-        console.log(`✅ Inserted ${numNewRows} new rows with additional locations for ${orderNumber}`);
+        // Execute batch update with retry logic
+        let attempt = 0;
+        const maxAttempts = 3;
+        while (attempt < maxAttempts) {
+          try {
+            await this.sheets.spreadsheets.batchUpdate({
+              spreadsheetId,
+              requestBody: { requests }
+            });
+            console.log(`✅ Successfully inserted ${numNewRows} new rows for ${orderNumber}`);
+            break;
+          } catch (batchError) {
+            attempt++;
+            console.error(`❌ Batch update failed (attempt ${attempt}/${maxAttempts}):`, batchError);
+            if (attempt === maxAttempts) throw batchError;
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Exponential backoff
+          }
+        }
       }
+
+      // Verify the update
+      const verifyResponse = await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sheetName}!A${targetRowIndex}:M${targetRowIndex + locations.length - 1}`,
+      });
+      const updatedRows = verifyResponse.data.values || [];
+      console.log(`Verified updated rows:`, updatedRows);
     } catch (error) {
       console.error('❌ Error updating sheet:', error);
       throw error;

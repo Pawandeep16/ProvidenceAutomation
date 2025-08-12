@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       let currentProcessingStepId = '';
       
       (async () => {
-        let automation: ProvidenceAutomation | null = null;
         try {
           const { username, password, googleSheetUrl } = await request.json();
           
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
             ]
           })}\n\n`));
           
-          automation = new ProvidenceAutomation();
+          const automation = new ProvidenceAutomation();
           await automation.initialize();
           
           // Step 2: Navigate to Providence
@@ -311,6 +310,8 @@ export async function POST(request: NextRequest) {
             results: results
           })}\n\n`));
           
+         
+          
         } catch (error) {
           console.error('Automation error:', error);
           
@@ -329,7 +330,7 @@ export async function POST(request: NextRequest) {
           const errorSteps = allSteps.map(step => {
             if (step.id === currentProcessingStepId) {
               return { ...step, status: 'error', error: error instanceof Error ? error.message : 'Unknown error' };
-            } else if (allSteps.findIndex(s => s.id === step.id) < allSteps.findIndex(s => s.id === currentProcessingStepId)) {
+            } else if (allSteps.findIndex(s => s.id === currentProcessingStepId) > allSteps.findIndex(s => s.id === step.id)) {
               return { ...step, status: 'completed' };
             } else {
               return { ...step, status: 'pending' };
@@ -342,15 +343,7 @@ export async function POST(request: NextRequest) {
             steps: errorSteps,
             error: error instanceof Error ? error.message : 'Unknown error occurred'
           })}\n\n`));
-        
         } finally {
-          if (automation) {
-            try {
-              await automation.close();
-            } catch (closeError) {
-              console.error('Failed to close automation:', closeError);
-            }
-          }
           controller.close();
         }
       })();
