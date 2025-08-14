@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/*.js": {
+      "memory": 2048,
+      "maxDuration": 60
+    }
+  },
+  "runtimes": {
+    "node": "20"
+  }
+}
