@@ -1,11 +1,12 @@
 {
+  "version": 2,
   "functions": {
     "api/*.js": {
       "memory": 2048,
       "maxDuration": 60
     }
   },
-  "runtimes": {
-    "node": "20"
+  "engines": {
+    "node": "20.x"
   }
 }
