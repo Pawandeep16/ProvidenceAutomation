@@ -29,7 +29,7 @@ export class ProvidenceAutomation {
         options.addArguments('--window-size=1920,1080');
 
         // Set the browser executable path for the serverless chromium package
-        // The package finds the correct path automatically.
+        // This is the correct way to configure it for Vercel
         options.setChromeBinaryPath(await chromium.executablePath());
 
     } else {
@@ -59,7 +59,6 @@ export class ProvidenceAutomation {
       script: 30000,
     });
   }
-
 
   async navigateToLogin(): Promise<void> {
     if (!this.driver) throw new Error('Driver not initialized');

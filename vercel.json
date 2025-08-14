@@ -1,17 +1,7 @@
 {
   "functions": {
-    "src/app/api/providence-automation/route.ts": {
-      "maxDuration": 300
+    "app/api/automation/route.ts": {
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
-  },
-  "env": {
-    "CHROME_BIN": "/usr/bin/google-chrome-stable",
-    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
-  },
-  "build": {
-    "env": {
-      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
-    }
-  },
-  "buildCommand": "npm run build"
+  }
 }
