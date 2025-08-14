@@ -9,27 +9,23 @@ export class ProvidenceAutomation {
 
   async initialize(): Promise<void> {
     
-    // --- THIS IS THE UPDATED SECTION ---
-    // It now handles both local development and Vercel deployment
-
     const options = new chrome.Options();
     let driverBuilder = new Builder().forBrowser('chrome');
 
-    // Check if the code is running in the Vercel production environment
+    // Check if the code is running in a serverless/production environment
     if (process.env.NODE_ENV === 'production') {
         console.log('Running in production mode (Vercel). Using @sparticuz/chromium.');
         
-        // Add arguments for the serverless environment
+        // Add arguments recommended for serverless environments
         options.addArguments(...chromium.args);
-        options.addArguments('--headless');
+        options.addArguments('--headless'); // Must run headless on the server
         options.addArguments('--no-sandbox');
         options.addArguments('--disable-gpu');
         options.addArguments('--disable-dev-shm-usage');
         options.addArguments('--single-process');
         options.addArguments('--window-size=1920,1080');
 
-        // Set the browser executable path for the serverless chromium package
-        // This is the correct way to configure it for Vercel
+        // Set the browser executable path using the serverless chromium package
         options.setChromeBinaryPath(await chromium.executablePath());
 
     } else {
@@ -45,11 +41,7 @@ export class ProvidenceAutomation {
         const serviceBuilder = new ServiceBuilder(chromedriverPath);
         driverBuilder.setChromeService(serviceBuilder);
     }
-const chromePath = await chromium.executablePath();
-if (!chromePath) {
-  throw new Error('@sparticuz/chromium binary not found. Ensure it is in dependencies, not devDependencies.');
-}
-options.setChromeBinaryPath(chromePath);
+
     // Apply the configured options to the driver builder
     driverBuilder.setChromeOptions(options);
     
