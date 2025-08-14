@@ -1,24 +1,23 @@
-import { Builder, By, WebDriver, until, Key, WebElement } from 'selenium-webdriver';
+import { Builder, By, until, Key } from 'selenium-webdriver';
 import path from 'path';
-import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
+import chrome from 'selenium-webdriver/chrome';
+import chromium from '@sparticuz/chromium';
 
 export class ProvidenceAutomation {
-  private driver: WebDriver | null = null;
+  private driver = null;
 
-  async initialize(): Promise<void> {
+  async initialize() {
     const options = new chrome.Options();
-    // Chrome options to suppress errors and optimize performance
+    const isServerless = !!process.env.VERCEL; // Detect Vercel (or add || process.env.AWS_LAMBDA_FUNCTION_NAME for broader serverless)
+
+    // Common options for both environments
     options.addArguments('--no-sandbox');
     options.addArguments('--disable-dev-shm-usage');
     options.addArguments('--disable-gpu');
-    options.addArguments('--window-size=1920,1080');
-    options.addArguments('--start-maximized');
-    
-    // Suppress Chrome service errors that cause delays
     options.addArguments('--disable-background-timer-throttling');
     options.addArguments('--disable-backgrounding-occluded-windows');
     options.addArguments('--disable-renderer-backgrounding');
-    options.addArguments('--disable-features=TranslateUI');
+    options.addArguments('--disable-features=TranslateUI,VizDisplayCompositor');
     options.addArguments('--disable-ipc-flooding-protection');
     options.addArguments('--disable-background-networking');
     options.addArguments('--disable-sync');
@@ -26,32 +25,48 @@ export class ProvidenceAutomation {
     options.addArguments('--disable-extensions');
     options.addArguments('--disable-plugins');
     options.addArguments('--disable-web-security');
-    options.addArguments('--disable-features=VizDisplayCompositor');
-    
-    // Suppress GCM/registration errors
     options.addArguments('--disable-component-extensions-with-background-pages');
     options.addArguments('--disable-background-mode');
     options.addArguments('--disable-client-side-phishing-detection');
     options.addArguments('--disable-hang-monitor');
     options.addArguments('--disable-prompt-on-repost');
     options.addArguments('--disable-domain-reliability');
-    
-    // Logging preferences to reduce console noise
-    const loggingPrefs = {
-      'browser': 'OFF',
-      'driver': 'OFF',
-      'performance': 'OFF'
-    };
-    options.setLoggingPrefs(loggingPrefs);
-    
-    // Suppress specific error messages
     options.excludeSwitches('enable-logging');
-    options.addArguments('--log-level=3'); // Only fatal errors
+    options.addArguments('--log-level=3'); // Fatal errors only
     options.addArguments('--silent');
     options.addArguments('--disable-logging');
-    
-    const chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
-    const serviceBuilder = new ServiceBuilder(chromedriverPath);
+
+    // Logging prefs
+    const loggingPrefs = {
+      browser: 'OFF',
+      driver: 'OFF',
+      performance: 'OFF'
+    };
+    options.setLoggingPrefs(loggingPrefs);
+
+    let chromeBinaryPath;
+    let chromedriverPath;
+
+    if (isServerless) {
+      // Serverless (Vercel/Linux) config
+      options.addArguments(...chromium.args);
+      options.addArguments('--headless=new'); // Modern headless mode
+      options.addArguments('--window-size=1920,1080'); // Virtual window size
+      chromeBinaryPath = await chromium.executablePath; // Bundled Chromium
+      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver'); // Linux binary
+    } else {
+      // Local (Windows)
+      options.addArguments('--window-size=1920,1080');
+      options.addArguments('--start-maximized');
+      chromeBinaryPath = undefined; // Use system-installed Chrome
+      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
+    }
+
+    if (chromeBinaryPath) {
+      options.setChromeBinaryPath(chromeBinaryPath);
+    }
+
+    const serviceBuilder = new chrome.ServiceBuilder(chromedriverPath);
 
     this.driver = await new Builder()
       .forBrowser('chrome')
