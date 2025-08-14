@@ -1,9 +1,17 @@
 {
-  "version": 2,
   "functions": {
-    "api/*.js": {
-      "memory": 2048,
-      "maxDuration": 60
+    "src/app/api/providence-automation/route.ts": {
+      "maxDuration": 300
     }
-  }
+  },
+  "env": {
+    "CHROME_BIN": "/usr/bin/google-chrome-stable",
+    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
+  },
+  "build": {
+    "env": {
+      "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
+    }
+  },
+  "buildCommand": "npm run build"
 }
