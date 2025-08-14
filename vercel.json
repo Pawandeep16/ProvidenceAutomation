@@ -1,10 +1,7 @@
 {
   "functions": {
     "app/api/automation/route.ts": {
-      "includeFiles": [
-        "node_modules/@sparticuz/chromium/bin/**",
-        "node_modules/selenium-webdriver/bin/**"
-      ]
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
   }
 }
