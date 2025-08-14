@@ -16,7 +16,8 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     // Only apply this configuration on the server-side
     if (isServer) {
-      config.output.libraryTarget = 'commonjs';
+      // This part tells Next.js not to bundle these packages, as they are
+      // required at runtime in the serverless function.
       config.externals.push({
         '@sparticuz/chromium': 'commonjs @sparticuz/chromium',
         'chrome-aws-lambda': 'commonjs chrome-aws-lambda',
