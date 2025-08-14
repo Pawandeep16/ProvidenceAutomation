@@ -1,85 +1,64 @@
-import { Builder, By, until, Key } from 'selenium-webdriver';
-import path from 'path';
-import chrome from 'selenium-webdriver/chrome';
+import { Builder, By, WebDriver, until, Key } from 'selenium-webdriver';
+import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
 import chromium from '@sparticuz/chromium';
+import path from 'path';
 
 export class ProvidenceAutomation {
-  private driver = null;
 
-  async initialize() {
+  private driver: WebDriver | null = null;
+
+  async initialize(): Promise<void> {
+    
+    // --- THIS IS THE UPDATED SECTION ---
+    // It now handles both local development and Vercel deployment
+
     const options = new chrome.Options();
-    const isServerless = !!process.env.VERCEL; // Detect Vercel (or add || process.env.AWS_LAMBDA_FUNCTION_NAME for broader serverless)
+    let driverBuilder = new Builder().forBrowser('chrome');
 
-    // Common options for both environments
-    options.addArguments('--no-sandbox');
-    options.addArguments('--disable-dev-shm-usage');
-    options.addArguments('--disable-gpu');
-    options.addArguments('--disable-background-timer-throttling');
-    options.addArguments('--disable-backgrounding-occluded-windows');
-    options.addArguments('--disable-renderer-backgrounding');
-    options.addArguments('--disable-features=TranslateUI,VizDisplayCompositor');
-    options.addArguments('--disable-ipc-flooding-protection');
-    options.addArguments('--disable-background-networking');
-    options.addArguments('--disable-sync');
-    options.addArguments('--disable-default-apps');
-    options.addArguments('--disable-extensions');
-    options.addArguments('--disable-plugins');
-    options.addArguments('--disable-web-security');
-    options.addArguments('--disable-component-extensions-with-background-pages');
-    options.addArguments('--disable-background-mode');
-    options.addArguments('--disable-client-side-phishing-detection');
-    options.addArguments('--disable-hang-monitor');
-    options.addArguments('--disable-prompt-on-repost');
-    options.addArguments('--disable-domain-reliability');
-    options.excludeSwitches('enable-logging');
-    options.addArguments('--log-level=3'); // Fatal errors only
-    options.addArguments('--silent');
-    options.addArguments('--disable-logging');
+    // Check if the code is running in the Vercel production environment
+    if (process.env.NODE_ENV === 'production') {
+        console.log('Running in production mode (Vercel). Using @sparticuz/chromium.');
+        
+        // Add arguments for the serverless environment
+        options.addArguments(...chromium.args);
+        options.addArguments('--headless');
+        options.addArguments('--no-sandbox');
+        options.addArguments('--disable-gpu');
+        options.addArguments('--disable-dev-shm-usage');
+        options.addArguments('--single-process');
+        options.addArguments('--window-size=1920,1080');
 
-    // Logging prefs
-    const loggingPrefs = {
-      browser: 'OFF',
-      driver: 'OFF',
-      performance: 'OFF'
-    };
-    options.setLoggingPrefs(loggingPrefs);
+        // Set the browser executable path for the serverless chromium package
+        options.setChromeBinaryPath(await chromium.executablePath());
 
-    let chromeBinaryPath;
-    let chromedriverPath;
-
-    if (isServerless) {
-      // Serverless (Vercel/Linux) config
-      options.addArguments(...chromium.args);
-      options.addArguments('--headless=new'); // Modern headless mode
-      options.addArguments('--window-size=1920,1080'); // Virtual window size
-      chromeBinaryPath = await chromium.executablePath; // Bundled Chromium
-      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver'); // Linux binary
     } else {
-      // Local (Windows)
-      options.addArguments('--window-size=1920,1080');
-      options.addArguments('--start-maximized');
-      chromeBinaryPath = undefined; // Use system-installed Chrome
-      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
+        console.log('Running in development mode (local). Using local chromedriver.');
+        
+        // Options for local development (non-headless to see the browser)
+        options.addArguments('--no-sandbox');
+        options.addArguments('--disable-dev-shm-usage');
+        options.addArguments('--start-maximized');
+
+        // Point to the local chromedriver.exe
+        const chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
+        const serviceBuilder = new ServiceBuilder(chromedriverPath);
+        driverBuilder.setChromeService(serviceBuilder);
     }
 
-    if (chromeBinaryPath) {
-      options.setChromeBinaryPath(chromeBinaryPath);
-    }
+    // Apply the configured options to the driver builder
+    driverBuilder.setChromeOptions(options);
+    
+    // Build the driver
+    this.driver = await driverBuilder.build();
 
-    const serviceBuilder = new chrome.ServiceBuilder(chromedriverPath);
-
-    this.driver = await new Builder()
-      .forBrowser('chrome')
-      .setChromeOptions(options)
-      .setChromeService(serviceBuilder)
-      .build();
-
+    // Set timeouts
     await this.driver.manage().setTimeouts({
       implicit: 10000,
       pageLoad: 30000,
       script: 30000,
     });
   }
+
 
   async navigateToLogin(): Promise<void> {
     if (!this.driver) throw new Error('Driver not initialized');
