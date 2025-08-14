@@ -1,58 +1,63 @@
-import { Builder, By, WebDriver, until, Key } from 'selenium-webdriver';
-import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
-import chromium from '@sparticuz/chromium';
-import path from 'path';
-
 export class ProvidenceAutomation {
-
   private driver: WebDriver | null = null;
 
   async initialize(): Promise<void> {
-    
-    // --- THIS IS THE UPDATED SECTION ---
-    // It now handles both local development and Vercel deployment
-
     const options = new chrome.Options();
     let driverBuilder = new Builder().forBrowser('chrome');
+    const isServerless = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
-    // Check if the code is running in the Vercel production environment
-    if (process.env.NODE_ENV === 'production') {
-        console.log('Running in production mode (Vercel). Using @sparticuz/chromium.');
-        
-        // Add arguments for the serverless environment
-        options.addArguments(...chromium.args);
-        options.addArguments('--headless');
-        options.addArguments('--no-sandbox');
-        options.addArguments('--disable-gpu');
-        options.addArguments('--disable-dev-shm-usage');
-        options.addArguments('--single-process');
-        options.addArguments('--window-size=1920,1080');
+    // Common Chrome options
+    options.addArguments(
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--log-level=3',
+      '--silent',
+      '--disable-logging'
+    );
+    options.excludeSwitches(['enable-logging']);
+    options.setLoggingPrefs({ browser: 'OFF', driver: 'OFF', performance: 'OFF' });
 
-        // Set the browser executable path for the serverless chromium package
-        // This is the correct way to configure it for Vercel
-        options.setChromeBinaryPath(await chromium.executablePath());
+    let chromeBinaryPath;
+    let chromedriverPath;
 
+    if (isServerless) {
+      console.log(`Running in serverless mode (${process.env.VERCEL ? 'Vercel' : 'AWS Lambda'}). Using @sparticuz/chromium.`);
+      options.addArguments(...chromium.args, '--headless=new', '--window-size=1920,1080');
+
+      try {
+        chromeBinaryPath = await chromium.executablePath();
+        console.log('Chromium Binary Path:', chromeBinaryPath);
+      } catch (error) {
+        console.error('Error resolving Chromium binary path:', error);
+        throw new Error('Failed to locate Chromium binary. Ensure @sparticuz/chromium is correctly installed.');
+      }
+
+      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver');
+      console.log('ChromeDriver Path:', chromedriverPath);
     } else {
-        console.log('Running in development mode (local). Using local chromedriver.');
-        
-        // Options for local development (non-headless to see the browser)
-        options.addArguments('--no-sandbox');
-        options.addArguments('--disable-dev-shm-usage');
-        options.addArguments('--start-maximized');
-
-        // Point to the local chromedriver.exe
-        const chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
-        const serviceBuilder = new ServiceBuilder(chromedriverPath);
-        driverBuilder.setChromeService(serviceBuilder);
+      console.log('Running in development mode (local). Using local chromedriver.');
+      options.addArguments('--window-size=1920,1080', '--start-maximized');
+      chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
+      console.log('ChromeDriver Path:', chromedriverPath);
     }
 
-    // Apply the configured options to the driver builder
-    driverBuilder.setChromeOptions(options);
-    
-    // Build the driver
-    this.driver = await driverBuilder.build();
+    if (chromeBinaryPath) {
+      options.setChromeBinaryPath(chromeBinaryPath);
+    }
 
-    // Set timeouts
+    const serviceBuilder = new ServiceBuilder(chromedriverPath);
+    driverBuilder.setChromeService(serviceBuilder);
+    driverBuilder.setChromeOptions(options);
+
+    try {
+      this.driver = await driverBuilder.build();
+      console.log('WebDriver initialized successfully');
+    } catch (error) {
+      console.error('Error initializing WebDriver:', error);
+      throw error;
+    }
+
     await this.driver.manage().setTimeouts({
       implicit: 10000,
       pageLoad: 30000,
