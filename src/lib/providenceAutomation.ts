@@ -19,11 +19,6 @@ export class ProvidenceAutomation {
     if (process.env.NODE_ENV === 'production') {
         console.log('Running in production mode (Vercel). Using @sparticuz/chromium.');
         
-        // NEW: Explicitly tell chromium where to find the brotli decompression files.
-        chromium.setHeadlessMode = true;
-        chromium.setChromiumPath = process.env.CHROME_PATH || '/usr/bin/chromium-browser';
-
-
         // Add arguments for the serverless environment
         options.addArguments(...chromium.args);
         options.addArguments('--headless');
@@ -34,6 +29,7 @@ export class ProvidenceAutomation {
         options.addArguments('--window-size=1920,1080');
 
         // Set the browser executable path for the serverless chromium package
+        // The package finds the correct path automatically.
         options.setChromeBinaryPath(await chromium.executablePath());
 
     } else {
