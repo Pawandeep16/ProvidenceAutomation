@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "postinstall": "npx @sparticuz/chromium install",
+   
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
   },
   "dependencies": {
-    "@sparticuz/chromium": "^138.0.2",
+     "@sparticuz/chromium": "^123.0.0",
+    
     "chrome-aws-lambda": "^10.1.0",
     "date-fns": "^2.30.0",
     "googleapis": "^128.0.0",
