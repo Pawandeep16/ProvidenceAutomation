@@ -1,61 +1,47 @@
 import { Builder, By, WebDriver, until, Key } from 'selenium-webdriver';
 import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
-import chromium from '@sparticuz/chromium';
 import path from 'path';
 
 export class ProvidenceAutomation {
-
   private driver: WebDriver | null = null;
 
-  async initialize(): Promise<void> {
-    
-    const options = new chrome.Options();
-    let driverBuilder = new Builder().forBrowser('chrome');
+async initialize(): Promise<void> {
+  const options = new chrome.Options();
+  let driverBuilder = new Builder().forBrowser('chrome');
 
-    // Check if the code is running in a serverless/production environment
-    if (process.env.NODE_ENV === 'production') {
-        console.log('Running in production mode (Vercel). Using @sparticuz/chromium.');
-        
-        // Add arguments recommended for serverless environments
-        options.addArguments(...chromium.args);
-        options.addArguments('--headless'); // Must run headless on the server
-        options.addArguments('--no-sandbox');
-        options.addArguments('--disable-gpu');
-        options.addArguments('--disable-dev-shm-usage');
-        options.addArguments('--single-process');
-        options.addArguments('--window-size=1920,1080');
+  // ✅ Docker-safe headless mode
+  options.addArguments(
+    '--headless=new',            // run Chrome in headless mode
+    '--no-sandbox',              // required inside Docker
+    '--disable-dev-shm-usage',   // prevents crashes in Docker
+    '--disable-gpu',             // disable GPU (Docker doesn't have one)
+    '--disable-software-rasterizer',
+    '--remote-debugging-port=9222', // keeps DevTools session open
+    '--window-size=1920,1080'    // stable viewport
+  );
 
-        // Set the browser executable path using the serverless chromium package
-        options.setChromeBinaryPath(await chromium.executablePath());
+  // ✅ Correct Chrome binary path inside Docker
+  options.setChromeBinaryPath(
+    process.env.CHROME_PATH || '/usr/bin/chromium'
+  );
 
-    } else {
-        console.log('Running in development mode (local). Using local chromedriver.');
-        
-        // Options for local development (non-headless to see the browser)
-        options.addArguments('--no-sandbox');
-        options.addArguments('--disable-dev-shm-usage');
-        options.addArguments('--start-maximized');
+  // ✅ Correct Chromedriver path inside Docker
+  const serviceBuilder = new ServiceBuilder(
+    process.env.CHROMEDRIVER_PATH || '/usr/bin/chromedriver'
+  );
 
-        // Point to the local chromedriver.exe
-        const chromedriverPath = path.resolve(process.cwd(), 'drivers', 'chromedriver.exe');
-        const serviceBuilder = new ServiceBuilder(chromedriverPath);
-        driverBuilder.setChromeService(serviceBuilder);
-    }
+  driverBuilder.setChromeService(serviceBuilder);
+  driverBuilder.setChromeOptions(options);
 
-    // Apply the configured options to the driver builder
-    driverBuilder.setChromeOptions(options);
-    
-    // Build the driver
-    this.driver = await driverBuilder.build();
+  this.driver = await driverBuilder.build();
 
-    // Set timeouts
-    await this.driver.manage().setTimeouts({
-      implicit: 10000,
-      pageLoad: 30000,
-      script: 30000,
-    });
-  }
-
+  // ✅ Stable timeouts
+  await this.driver.manage().setTimeouts({
+    implicit: 10000,
+    pageLoad: 30000,
+    script: 30000,
+  });
+}
   async navigateToLogin(): Promise<void> {
     if (!this.driver) throw new Error('Driver not initialized');
 

@@ -2,13 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: {
-    serverActions: true,
-    outputFileTracingIncludes: {
-      // Ensure binaries get packaged with the serverless function
-      '/**': ['./node_modules/@sparticuz/chromium/bin/**'],
-    },
-  },
+ 
   env: {
     GOOGLE_SHEETS_API_KEY: process.env.GOOGLE_SHEETS_API_KEY,
     GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
