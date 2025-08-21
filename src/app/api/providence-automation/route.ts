@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
               { id: 'complete', title: 'Automation Complete', description: 'All steps completed successfully', status: 'pending' }
             ]
           })}\n\n`));
-          
+
           await automation.navigateToLogin();
-          
+
           // Step 3: Login
           currentProcessingStepId = 'login';
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -167,10 +167,10 @@ export async function POST(request: NextRequest) {
           const allOrders = await sheetsService.processSheet(googleSheetUrl);
           
           const boltOrders = allOrders.filter(order => 
-            order.orderNumber && order.orderNumber.toString().startsWith('BoltYYZ3')
+            order.orderNumber && (order.orderNumber.toString().startsWith('BoltYYZ3') || order.orderNumber.toString().startsWith('DO4000'))
           );
           
-          console.log(`Found ${boltOrders.length} BoltYYZ3 orders to process`);
+          console.log(`Found ${boltOrders.length} BoltYYZ3 or DO4000 orders to process`);
           
           // Step 8: Process Orders
           currentProcessingStepId = 'process-orders';
@@ -185,22 +185,27 @@ export async function POST(request: NextRequest) {
               { id: 'inventory', title: 'Navigate to Inventory Management', description: 'Clicking on Inventory Management tab', status: 'completed' },
               { id: 'manual-items', title: 'Open Manual Items', description: 'Clicking on Manual Items section', status: 'completed' },
               { id: 'read-sheet', title: 'Read Google Sheet', description: 'Fetching BoltYYZ3 orders from Google Sheet', status: 'completed' },
-              { id: 'process-orders', title: 'Process Orders', description: `Processing ${boltOrders.length} BoltYYZ3 orders`, status: 'running' },
+              { id: 'process-orders', title: 'Process Orders', description: `Processing ${boltOrders.length} BoltYYZ3 or DO4000 orders`, status: 'running' },
               { id: 'complete', title: 'Automation Complete', description: 'All steps completed successfully', status: 'pending' }
             ]
           })}\n\n`));
           
           const results: ProcessingResult[] = [];
           
-          for (let i = 0; i < Math.min(boltOrders.length, 5); i++) {
+          for (let i = 0; i < boltOrders.length; i++) {
             const order = boltOrders[i];
             const orderNumber = order.orderNumber.toString();
+            
+            if (orderNumber.startsWith('SC')) {
+              console.log('encounter Z5 code');
+            }
             
             try {
               console.log(`Processing order ${i + 1}/${boltOrders.length}: ${orderNumber}`);
               
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                 isRunning: true,
+                
                 currentStepId: 'process-orders',
                 steps: [
                   { id: 'initialize', title: 'Initialize Browser', description: 'Starting Chrome browser and preparing automation', status: 'completed' },
@@ -210,7 +215,7 @@ export async function POST(request: NextRequest) {
                   { id: 'inventory', title: 'Navigate to Inventory Management', description: 'Clicking on Inventory Management tab', status: 'completed' },
                   { id: 'manual-items', title: 'Open Manual Items', description: 'Clicking on Manual Items section', status: 'completed' },
                   { id: 'read-sheet', title: 'Read Google Sheet', description: 'Fetching BoltYYZ3 orders from Google Sheet', status: 'completed' },
-                  { id: 'process-orders', title: 'Process Orders', description: `Processing ${orderNumber} (${i + 1}/${Math.min(boltOrders.length, 5)})`, status: 'running' },
+                  { id: 'process-orders', title: 'Process Orders', description: `Processing ${orderNumber} (${i + 1}/${boltOrders.length})`, status: 'running' },
                   { id: 'complete', title: 'Automation Complete', description: 'All steps completed successfully', status: 'pending' }
                 ],
                 results: [...results, { orderNumber, status: 'processing' }]

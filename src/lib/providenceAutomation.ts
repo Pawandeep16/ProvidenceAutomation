@@ -1,55 +1,53 @@
 import { Builder, By, WebDriver, until, Key } from 'selenium-webdriver';
-import chrome, { ServiceBuilder } from 'selenium-webdriver/chrome';
-import path from 'path';
+import chrome from 'selenium-webdriver/chrome';
 
 export class ProvidenceAutomation {
   private driver: WebDriver | null = null;
 
-async initialize(): Promise<void> {
-  const options = new chrome.Options();
-  let driverBuilder = new Builder().forBrowser('chrome');
+  async initialize(): Promise<void> {
+    const options = new chrome.Options();
+    let driverBuilder = new Builder().forBrowser('chrome');
 
-  // ✅ Docker-safe headless mode
-  options.addArguments(
-    '--headless=new',            // run Chrome in headless mode
-    '--no-sandbox',              // required inside Docker
-    '--disable-dev-shm-usage',   // prevents crashes in Docker
-    '--disable-gpu',             // disable GPU (Docker doesn't have one)
-    '--disable-software-rasterizer',
-    '--remote-debugging-port=9222', // keeps DevTools session open
-    '--window-size=1920,1080'    // stable viewport
-  );
+    // ✅ Docker-safe headless mode
+    options.addArguments(
+      '--headless=new',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--remote-debugging-port=9222',
+      '--window-size=1920,1080'
+    );
 
-  // ✅ Correct Chrome binary path inside Docker
-  options.setChromeBinaryPath(
-    process.env.CHROME_PATH || '/usr/bin/chromium'
-  );
+    // ✅ Correct Chrome binary path inside Docker
+    options.setChromeBinaryPath(
+      process.env.CHROME_PATH || '/usr/bin/chromium'
+    );
 
-  // ✅ Correct Chromedriver path inside Docker
-  const serviceBuilder = new ServiceBuilder(
-    process.env.CHROMEDRIVER_PATH || '/usr/bin/chromedriver'
-  );
+    // ✅ Correct Chromedriver path inside Docker
+    const serviceBuilder = new chrome.ServiceBuilder(
+      process.env.CHROMEDRIVER_PATH || '/usr/bin/chromedriver'
+    );
 
-  driverBuilder.setChromeService(serviceBuilder);
-  driverBuilder.setChromeOptions(options);
+    driverBuilder.setChromeService(serviceBuilder);
+    driverBuilder.setChromeOptions(options);
 
-  this.driver = await driverBuilder.build();
+    this.driver = await driverBuilder.build();
 
-  // ✅ Stable timeouts
-  await this.driver.manage().setTimeouts({
-    implicit: 10000,
-    pageLoad: 30000,
-    script: 30000,
-  });
-}
-  async navigateToLogin(): Promise<void> {
+    // ✅ Stable timeouts
+    await this.driver.manage().setTimeouts({
+      implicit: 10000,
+      pageLoad: 30000,
+      script: 30000,
+    });
+  }
+ async navigateToLogin(): Promise<void> {
     if (!this.driver) throw new Error('Driver not initialized');
 
     console.log('Navigating to Providence login page...');
     await this.driver.get('https://providence.gobolt.com/login');
     await this.driver.wait(until.elementLocated(By.id('normal_login_email')), 15000);
   }
-
   async login(normal_login_email: string, normal_login_password: string): Promise<void> {
     if (!this.driver) throw new Error('Driver not initialized');
 
@@ -76,7 +74,7 @@ async initialize(): Promise<void> {
     
     console.log('Looking for facility selection modal dialog...');
     
-    await this.driver.sleep(1000);
+    await this.driver.sleep(10000);
     
     try {
       console.log('Waiting for facility selection modal...');
@@ -261,94 +259,201 @@ async initialize(): Promise<void> {
     }
   }
 
-  async searchOrder(orderNumber: string): Promise<any> {
-    if (!this.driver) throw new Error('Driver not initialized');
-    
-    console.log(`Searching for order: ${orderNumber}`);
-    
-    const searchSelectors = [
-      'input[placeholder*="Search code, order #, organization, customer"]',
-      'input.ant-input.ant-input-lg.css-43bhvr',
-      'input[autocapitalize="off"][type="search"]',
-      '.ant-input-search input',
-      'input[placeholder*="search"]',
-      'input[type="search"]'
-    ];
-    
-    let searchInput = null;
-    for (const selector of searchSelectors) {
-      try {
-        searchInput = await this.driver.findElement(By.css(selector));
-        console.log(`Found search input with selector: ${selector}`);
-        break;
-      } catch (e) {
-        continue;
-      }
-    }
-    
-    if (!searchInput) throw new Error('Could not find search input field');
-    
-    console.log('Clearing search input field...');
-    await searchInput.clear();
-    await this.driver.sleep(300);
-    await searchInput.sendKeys(Key.CONTROL, 'a');
-    await this.driver.sleep(200);
-    await searchInput.sendKeys(Key.DELETE);
-    await this.driver.sleep(300);
-    
-    const currentValue = await searchInput.getAttribute('value');
-    if (currentValue && currentValue.trim() !== '') {
-      console.log(`Field still contains: "${currentValue}", clearing again...`);
-      await searchInput.clear();
-      await this.driver.sleep(300);
-    }
-    
-    console.log(`Entering order number: ${orderNumber}`);
-    await searchInput.sendKeys(orderNumber);
-    await this.driver.sleep(800);
-    
-    const enteredValue = await searchInput.getAttribute('value');
-    console.log(`Entered value: "${enteredValue}"`);
-    
-    if (enteredValue !== orderNumber) {
-      console.log('Value mismatch, clearing and re-entering...');
-      await searchInput.clear();
-      await this.driver.sleep(300);
-      await searchInput.sendKeys(orderNumber);
-      await this.driver.sleep(500);
-    }
-    
-    const searchButtonSelectors = [
-      'button.ant-btn.css-43bhvr.ant-btn-default.ant-btn-color-default.ant-btn-variant-outlined.ant-btn-lg.ant-btn-icon-only.ant-input-search-button',
-      '.ant-input-search-button',
-      '.ant-input-group-addon button',
-      'button[type="button"][class*="search-button"]',
-      'span.ant-input-group-addon button'
-    ];
-    
-    let searchButton = null;
-    for (const selector of searchButtonSelectors) {
-      try {
-        searchButton = await this.driver.findElement(By.css(selector));
-        console.log(`Found search button with selector: ${selector}`);
-        break;
-      } catch (e) {
-        continue;
-      }
-    }
-    
-    if (searchButton) {
-      await searchButton.click();
-      console.log('Clicked search button');
-    } else {
-      await searchInput.sendKeys(Key.ENTER);
-      console.log('Used Enter key to search');
-    }
-    
-    await this.driver.sleep(3000);
-    return await this.extractOrderData(orderNumber);
+
+
+async searchOrder(orderNumber: string): Promise<any> {
+  if (!this.driver) throw new Error('Driver not initialized');
+
+  console.log(`Searching for order: ${orderNumber}`);
+  // Log 'SC' orders for consistency
+  if (orderNumber.startsWith('SC')) {
+    console.log('encounter Z5 code');
   }
 
+  const searchSelectors = [
+    'input[placeholder*="Search code, order #, organization, customer"]',
+    'input.ant-input.ant-input-lg.css-43bhvr',
+    'input[autocapitalize="off"][type="search"]',
+    '.ant-input-search input',
+    'input[placeholder*="search"]',
+    'input[type="search"]'
+  ];
+
+  let searchInput = null;
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    try {
+      for (const selector of searchSelectors) {
+        try {
+          searchInput = await this.driver.findElement(By.css(selector));
+          console.log(`Found search input with selector: ${selector}`);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!searchInput) throw new Error('Could not find search input field');
+
+      console.log('Clearing search input field...');
+      await searchInput.clear();
+      await this.driver.sleep(300);
+      await searchInput.sendKeys(Key.CONTROL, 'a');
+      await this.driver.sleep(200);
+      await searchInput.sendKeys(Key.DELETE);
+      await this.driver.sleep(300);
+
+      const currentValue = await searchInput.getAttribute('value');
+      if (currentValue && currentValue.trim() !== '') {
+        console.log(`Field still contains: "${currentValue}", clearing again...`);
+        await searchInput.clear();
+        await this.driver.sleep(300);
+      }
+
+      console.log(`Entering order number: ${orderNumber}`);
+      await searchInput.sendKeys(orderNumber);
+      await this.driver.sleep(800);
+
+      const enteredValue = await searchInput.getAttribute('value');
+      console.log(`Entered value: "${enteredValue}"`);
+
+      if (enteredValue !== orderNumber) {
+        console.log('Value mismatch, clearing and re-entering...');
+        await searchInput.clear();
+        await this.driver.sleep(300);
+        await searchInput.sendKeys(orderNumber);
+        await this.driver.sleep(500);
+      }
+
+      const searchButtonSelectors = [
+        'button.ant-btn.css-43bhvr.ant-btn-default.ant-btn-color-default.ant-btn-variant-outlined.ant-btn-lg.ant-btn-icon-only.ant-input-search-button',
+        '.ant-input-search-button',
+        '.ant-input-group-addon button',
+        'button[type="button"][class*="search-button"]',
+        'span.ant-input-group-addon button'
+      ];
+
+      let searchButton = null;
+      for (const selector of searchButtonSelectors) {
+        try {
+          searchButton = await this.driver.findElement(By.css(selector));
+          console.log(`Found search button with selector: ${selector}`);
+          break;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (searchButton) {
+        await searchButton.click();
+        console.log('Clicked search button');
+      } else {
+        await searchInput.sendKeys(Key.ENTER);
+        console.log('Used Enter key to search');
+      }
+
+      await this.driver.sleep(3000);
+      return await this.extractOrderData(orderNumber);
+    } catch (error) {
+      attempts++;
+      console.error(`Search attempt ${attempts}/${maxAttempts} failed: ${error.message}`);
+      if (attempts === maxAttempts) {
+        throw new Error(`Failed to search for order ${orderNumber} after ${maxAttempts} attempts: ${error.message}`);
+      }
+      await this.driver.sleep(2000 * attempts); // Exponential backoff
+    }
+  }
+}
+
+// private async extractOrderData(orderNumber: string): Promise<any> {
+//   if (!this.driver) throw new Error('Driver not initialized');
+
+//   // Log 'SC' orders for consistency
+//   if (orderNumber.startsWith('SC')) {
+//     console.log('encounter Z5 code');
+//   }
+
+//   const data: any = { locations: [] };
+
+//   try {
+//     // s are loaded
+//     await this.driver.wait(until.elementLocated(By.css('.ant-table-tbody tr.ant-taIncrease wait time and retry to ensure all rowble-row')), 10000); // Increased to 10s
+//     let rows = await this.driver.findElements(By.css('.ant-table-tbody tr.ant-table-row'));
+//     console.log(`Initial rows found: ${rows.length}`);
+
+//     // Retry if no rows are found
+//     if (rows.length === 0) {
+//       console.log('No rows found initially, retrying...');
+//       await this.driver.sleep(2000);
+//       rows = await this.driver.findElements(By.css('.ant-table-tbody tr.ant-table-row'));
+//       console.log(`Retry rows found: ${rows.length}`);
+//     }
+
+//     if (rows.length > 0) {
+//       let firstMatch = true;
+//       for (const row of rows) {
+//         try {
+//           const cells = await row.findElements(By.css('td'));
+//           console.log(`Row has ${cells.length} cells`);
+
+//           if (cells.length >= 5) {
+//             const currentOrder = (await cells[4].getText()).trim(); // Order number in column E (index 4)
+//             console.log(`Checking row with order: ${currentOrder}`);
+
+//             if (currentOrder === orderNumber) {
+//               const locationCell = cells[1]; // Location in column B (index 1)
+//               let location = '';
+//               try {
+//                 const locationLink = await locationCell.findElement(By.css('a[href*="/locations/"]'));
+//                 location = (await locationLink.getText()).trim();
+//                 console.log(`✅ Found location link: ${location}`);
+//               } catch (linkError) {
+//                 location = (await locationCell.getText()).trim();
+//                 console.log(`✅ Found location text: ${location}`);
+//               }
+
+//               if (location) {
+//                 data.locations.push(location);
+//                 console.log(`Added location: ${location}, Total locations: ${data.locations.length}`);
+//               }
+
+//               if (firstMatch) {
+//                 data.code = (await cells[0].getText()).trim(); // Code in column A (index 0)
+//                 data.organization = (await cells[2].getText()).trim(); // Organization in column C (index 2)
+//                 data.customer = (await cells[3].getText()).trim(); // Customer in column D (index 3)
+//                 data.order = currentOrder;
+//                 firstMatch = false;
+//               }
+//             }
+//           } else {
+//             console.log(`❌ Row has insufficient cells (${cells.length}), skipping...`);
+//           }
+//         } catch (cellError) {
+//           console.error(`❌ Error processing row cells: ${cellError}`);
+//           continue; // Skip to next row if cell extraction fails
+//         }
+//       }
+
+//       if (data.locations.length > 0) {
+//         console.log(`Extracted data: Code=${data.code}, Locations=${data.locations.join(', ')}, Organization=${data.organization}, Customer=${data.customer}, Order=${data.order}`);
+//       } else {
+//         console.log('❌ No locations found for this order');
+//         data.error = 'No locations found';
+//       }
+//     } else {
+//       console.log('No results found for this order');
+//       data.error = 'No results found';
+//     }
+//   } catch (error) {
+//     console.error('Error extracting order data:', error);
+//     data.error = `Error extracting data: ${error.message}`;
+//   }
+
+//   return data;
+// }
+// }
   private async extractOrderData(orderNumber: string): Promise<any> {
     if (!this.driver) throw new Error('Driver not initialized');
     

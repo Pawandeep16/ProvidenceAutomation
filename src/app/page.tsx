@@ -115,7 +115,7 @@ export default function ProvidenceAutomation() {
           </h1>
           <p className="text-slate-600 max-w-2xl mx-auto">
             Automated navigation to Providence portal Manual Items section.
-            Logs into Providence, selects YYZ5 facility, and navigates to Manual Items.
+            Logs into Providence, selects YYZ5 facility, and navigates to Manual Items,Get orders and update Sheet.
           </p>
         </div>
 
